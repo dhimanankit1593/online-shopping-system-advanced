@@ -12,8 +12,8 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
-                    apt update -y
-                    apt install -y php php-mysql apache2 unzip
+                    sudo apt update -y
+                    sudo apt install -y php php-mysql apache2 unzip
                 '''
             }
         }
@@ -21,9 +21,10 @@ pipeline {
         stage('Deploy Code') {
             steps {
                 sh '''
-                    rm -rf /var/www/html/shop2
-                    mkdir -p /var/www/html/shop2
-                    cp -r * /var/www/html/shop2/
+                    sudo rm -rf /var/www/html/shop2
+                    sudo mkdir -p /var/www/html/shop2
+                    sudo cp -r * /var/www/html/shop2/
+                    sudo chmod -R 777 /var/www/html/shop2
                 '''
             }
         }
@@ -31,9 +32,13 @@ pipeline {
         stage('Apache VirtualHost') {
             steps {
                 sh '''
-                    echo "Listen 8081" >> /etc/apache2/ports.conf || true
+                    # Add port 8081 listener if not already present
+                    if ! grep -q "Listen 8081" /etc/apache2/ports.conf; then
+                        echo "Listen 8081" | sudo tee -a /etc/apache2/ports.conf
+                    fi
 
-                    cat <<EOF > /etc/apache2/sites-available/shop2.conf
+                    # Create VirtualHost file
+                    sudo bash -c 'cat <<EOF > /etc/apache2/sites-available/shop2.conf
 <VirtualHost *:8081>
     DocumentRoot /var/www/html/shop2
     <Directory /var/www/html/shop2>
@@ -41,11 +46,11 @@ pipeline {
         Require all granted
     </Directory>
 </VirtualHost>
-EOF
+EOF'
 
-                    a2ensite shop2.conf || true
-                    a2enmod rewrite || true
-                    systemctl restart apache2
+                    sudo a2ensite shop2.conf || true
+                    sudo a2enmod rewrite || true
+                    sudo systemctl restart apache2
                 '''
             }
         }
