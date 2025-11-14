@@ -2,25 +2,28 @@ pipeline {
     agent any
 
     stages {
+
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/PuneethReddyHC/online-shopping-system-advanced.git'
+                git branch: 'master', url: 'https://github.com/dhimanankit1593/online-shopping-system-advanced.git'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'sudo apt update'
-                sh 'sudo apt install -y php php-mysql apache2 unzip'
+                sh '''
+                    apt update -y
+                    apt install -y php php-mysql apache2 unzip
+                '''
             }
         }
 
         stage('Deploy Code') {
             steps {
                 sh '''
-                    sudo rm -rf /var/www/html/shop2
-                    sudo mkdir -p /var/www/html/shop2
-                    sudo cp -r * /var/www/html/shop2/
+                    rm -rf /var/www/html/shop2
+                    mkdir -p /var/www/html/shop2
+                    cp -r * /var/www/html/shop2/
                 '''
             }
         }
@@ -28,17 +31,21 @@ pipeline {
         stage('Apache VirtualHost') {
             steps {
                 sh '''
-                    echo "<VirtualHost *:8081>
-                        DocumentRoot /var/www/html/shop2
-                        <Directory /var/www/html/shop2>
-                            AllowOverride All
-                            Require all granted
-                        </Directory>
-                    </VirtualHost>" | sudo tee /etc/apache2/sites-available/shop2.conf
+                    echo "Listen 8081" >> /etc/apache2/ports.conf || true
 
-                    sudo a2ensite shop2.conf
-                    sudo a2enmod rewrite
-                    sudo systemctl restart apache2
+                    cat <<EOF > /etc/apache2/sites-available/shop2.conf
+<VirtualHost *:8081>
+    DocumentRoot /var/www/html/shop2
+    <Directory /var/www/html/shop2>
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+EOF
+
+                    a2ensite shop2.conf || true
+                    a2enmod rewrite || true
+                    systemctl restart apache2
                 '''
             }
         }
@@ -46,7 +53,8 @@ pipeline {
 
     post {
         success {
-            echo "Website deployed on PORT 8081"
+            echo "Website deployed successfully!"
+            echo "URL: http://YOUR_SERVER_IP:8081"
         }
     }
 }
